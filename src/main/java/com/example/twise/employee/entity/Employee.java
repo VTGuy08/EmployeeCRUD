@@ -1,4 +1,4 @@
-package com.example.twise.employee;
+package com.example.twise.employee.entity;
 
 import java.util.Date;
 

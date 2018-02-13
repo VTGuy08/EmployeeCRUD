@@ -31,10 +31,9 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import com.example.twise.employee.Employee;
-import com.example.twise.employee.EmployeeRepository;
-import com.example.twise.employee.EmployeeUpdate;
-import com.example.twise.employee.PositionCategory;
+import com.example.twise.employee.data.EmployeeRepository;
+import com.example.twise.employee.entity.Employee;
+import com.example.twise.employee.entity.PositionCategory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RunWith(SpringRunner.class)
@@ -56,6 +55,8 @@ public class EmployeeCRUDAppApplicationTests {
 
 	@Rule
 	public MockitoRule mockitoRule = MockitoJUnit.rule();
+	
+	private static String EMPLOYEE_URI = "/employees/";
 
 	// Dummy Data
 	private Employee emp1 = createEmployeeStub("John", 'P', "Doe", PositionCategory.ProgramManager);
@@ -77,8 +78,8 @@ public class EmployeeCRUDAppApplicationTests {
 	/*
 	 * Commented out so that we can examine the database after running tests. We can
 	 * use URLs to test some methods:
-	 * http://localhost:8080/employee/search/findById?id=5a7a789a8baddc3088dd2c03
-	 * http://localhost:8080/employee/search
+	 * http://localhost:8080/employees/search/findById?id=5a7a789a8baddc3088dd2c03
+	 * http://localhost:8080/employees/search
 	 */
 	// @After
 	// public void tearDown() {
@@ -116,7 +117,7 @@ public class EmployeeCRUDAppApplicationTests {
 	 */
 	@SuppressWarnings("unused")
 	private ResultActions getAllEmployees() throws Exception {
-		return mockMvc.perform(get("/employees")).andExpect(status().isOk());
+		return mockMvc.perform(get(EMPLOYEE_URI)).andExpect(status().isOk());
 	}
 
 	/**
@@ -138,7 +139,7 @@ public class EmployeeCRUDAppApplicationTests {
 
 		String jackJson = mapper.writeValueAsString(jack);
 		ResultActions result = mockMvc
-				.perform(post("/employees/create").contentType(MediaType.APPLICATION_JSON).content(jackJson));
+				.perform(post(EMPLOYEE_URI).contentType(MediaType.APPLICATION_JSON).content(jackJson));
 
 		result.andExpect(content().string(is("\"" + jack.getId() + "\""))).andExpect(status().is2xxSuccessful());
 	}
@@ -149,8 +150,8 @@ public class EmployeeCRUDAppApplicationTests {
 
 		String jsonId = mapper.writeValueAsString(emp1.getId());
 
-		ResultActions result = mockMvc.perform(
-				get("/employees/getEmployeeById").contentType(MediaType.APPLICATION_JSON).content(jsonId.toString()))
+		ResultActions result = mockMvc
+				.perform(get(EMPLOYEE_URI).contentType(MediaType.APPLICATION_JSON).content(jsonId.toString()))
 				.andExpect(status().is2xxSuccessful());
 
 		result.andExpect(jsonPath("$.[0].id", is(emp1.getId())))
@@ -159,23 +160,21 @@ public class EmployeeCRUDAppApplicationTests {
 
 	@Test
 	public void testGetAllEmployees() throws Exception {
-		// Uses the CRUD Rest Service Interface
-		ResultActions result = mockMvc.perform(get("/employees")).andExpect(status().is2xxSuccessful());
-		result.andExpect(content().contentType("application/hal+json;charset=UTF-8"))
-				.andExpect(jsonPath("$._embedded.employees", hasSize(2)))
-				.andExpect(jsonPath("$._embedded.employees[0].firstName", is("John")))
-				.andExpect(jsonPath("$._embedded.employees[0].middleInitial", is("P")))
-				.andExpect(jsonPath("$._embedded.employees[1].firstName", is("Jane")))
-				.andExpect(jsonPath("$._embedded.employees[1].middleInitial", is("M")));
+		// // Uses the CRUD Rest Service Interface
+		// ResultActions result =
+		// mockMvc.perform(get("/employees")).andExpect(status().is2xxSuccessful());
+		// result.andExpect(content().contentType("application/hal+json;charset=UTF-8"))
+		// .andExpect(jsonPath("$._embedded.employees", hasSize(2)))
+		// .andExpect(jsonPath("$._embedded.employees[0].firstName", is("John")))
+		// .andExpect(jsonPath("$._embedded.employees[0].middleInitial", is("P")))
+		// .andExpect(jsonPath("$._embedded.employees[1].firstName", is("Jane")))
+		// .andExpect(jsonPath("$._embedded.employees[1].middleInitial", is("M")));
 
 		// Uses the REST implementation of EmployeeController
-		ResultActions result2 = mockMvc.perform(get("/employees/getEmployees")).andExpect(status().is2xxSuccessful());
-		result2.andExpect(content().contentType("application/hal+json;charset=UTF-8"))
-				.andExpect(jsonPath("$", hasSize(2)))
-				.andExpect(jsonPath("$.[0].firstName", is("John")))
-				.andExpect(jsonPath("$.[0].middleInitial", is("P")))
-				.andExpect(jsonPath("$.[1].firstName", is("Jane")))
-				.andExpect(jsonPath("$.[1].middleInitial", is("M")));
+		ResultActions result2 = mockMvc.perform(get(EMPLOYEE_URI)).andExpect(status().is2xxSuccessful());
+		result2.andExpect(content().contentType("application/json;charset=UTF-8")).andExpect(jsonPath("$", hasSize(2)))
+				.andExpect(jsonPath("$.[0].firstName", is("John"))).andExpect(jsonPath("$.[0].middleInitial", is("P")))
+				.andExpect(jsonPath("$.[1].firstName", is("Jane"))).andExpect(jsonPath("$.[1].middleInitial", is("M")));
 	}
 
 	@Test
@@ -188,7 +187,7 @@ public class EmployeeCRUDAppApplicationTests {
 
 		// Make a call to the REST service to add 'Jack' to the database
 		ResultActions resultCreate = mockMvc
-				.perform(post("/employees/create").contentType(MediaType.APPLICATION_JSON).content(jackJson));
+				.perform(post(EMPLOYEE_URI).contentType(MediaType.APPLICATION_JSON).content(jackJson));
 
 		resultCreate.andExpect(status().is2xxSuccessful());
 
@@ -201,22 +200,22 @@ public class EmployeeCRUDAppApplicationTests {
 		// Sanity check that we did in fact change 'Jack'
 		assertEquals(PositionCategory.Director, jack.getPositionCat());
 
-		EmployeeUpdate jackUpdated = new EmployeeUpdate(id, jack);
-		String jackJsonUpdated = mapper.writeValueAsString(jackUpdated);
+		String jackJsonUpdated = mapper.writeValueAsString(jack);
 
 		// Perform the Update, expect success
-		ResultActions resultUpdate = mockMvc.perform(
-				put("/employees/updateEmployeeById").contentType(MediaType.APPLICATION_JSON).content(jackJsonUpdated));
+		ResultActions resultUpdate = mockMvc
+				.perform(put(EMPLOYEE_URI + id).contentType(MediaType.APPLICATION_JSON).content(jackJsonUpdated));
 
 		resultUpdate.andExpect(status().is2xxSuccessful());
 
 		// Retrieve the record and verify the update took
-		ResultActions resultRetrieve = mockMvc.perform(
-				get("/employees/getEmployeeById").contentType(MediaType.APPLICATION_JSON).content(jsonId.toString()))
+		ResultActions resultRetrieve = mockMvc
+				.perform(get(EMPLOYEE_URI + id).contentType(MediaType.APPLICATION_JSON_VALUE).content(jsonId.toString()))
 				.andExpect(status().isOk());
 
-		resultRetrieve.andExpect(jsonPath("$.[0].id", is(id)))
-				.andExpect(jsonPath("$.[0].positionCat", is(jack.getPositionCat().toString())));
+		resultRetrieve.andExpect(jsonPath("$.firstName", is(jack.getFirstName())))
+			.andExpect(jsonPath("$.id", is(jack.getId())))
+				.andExpect(jsonPath("$.positionCat", is(jack.getPositionCat().toString())));
 	}
 
 	@Test
@@ -229,7 +228,7 @@ public class EmployeeCRUDAppApplicationTests {
 
 		// Make a call to the REST service to add 'Jack' to the database
 		ResultActions resultCreate = mockMvc
-				.perform(post("/employees/create").contentType(MediaType.APPLICATION_JSON).content(jackJson));
+				.perform(post(EMPLOYEE_URI).contentType(MediaType.APPLICATION_JSON).content(jackJson));
 
 		resultCreate.andExpect(status().is2xxSuccessful());
 
@@ -244,12 +243,11 @@ public class EmployeeCRUDAppApplicationTests {
 		// Sanity check that we did in fact change 'Jack'
 		assertEquals(PositionCategory.Director, jack.getPositionCat());
 
-		EmployeeUpdate jackUpdated = new EmployeeUpdate(id, jack);
-		String jackJsonUpdated = mapper.writeValueAsString(jackUpdated);
+		String jackJsonUpdated = mapper.writeValueAsString(jack);
 
-		// Perform the Update, expect success
+		// Perform the Update, expect failure
 		ResultActions resultUpdate = mockMvc.perform(
-				put("/employees/updateEmployeeById").contentType(MediaType.APPLICATION_JSON).content(jackJsonUpdated));
+				put(EMPLOYEE_URI + id).contentType(MediaType.APPLICATION_JSON_VALUE).content(jackJsonUpdated));
 
 		resultUpdate.andExpect(status().isNotFound());
 	}
@@ -261,15 +259,14 @@ public class EmployeeCRUDAppApplicationTests {
 
 		String jackJson = mapper.writeValueAsString(jack);
 		ResultActions resultCreate = mockMvc
-				.perform(post("/employees/create").contentType(MediaType.APPLICATION_JSON).content(jackJson));
+				.perform(post(EMPLOYEE_URI).contentType(MediaType.APPLICATION_JSON).content(jackJson));
 		resultCreate.andExpect(content().string(is("\"" + jack.getId() + "\""))).andExpect(status().is2xxSuccessful());
 
-		String idJson = mapper.writeValueAsString(jack.getId());
 		ResultActions resultDelete = mockMvc.perform(
-				delete("/employees/deleteEmployeeById").contentType(MediaType.APPLICATION_JSON).content(idJson));
+				delete(EMPLOYEE_URI + jack.getId()).contentType(MediaType.APPLICATION_JSON));
 		resultDelete.andExpect(status().is2xxSuccessful());
 
-		mockMvc.perform(get("/employees/getEmployeeById").contentType(MediaType.APPLICATION_JSON).content(idJson))
+		mockMvc.perform(get(EMPLOYEE_URI + jack.getId()).contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isNotFound());
 	}
 
@@ -280,21 +277,20 @@ public class EmployeeCRUDAppApplicationTests {
 
 		String jackJson = mapper.writeValueAsString(jack);
 		ResultActions resultCreate = mockMvc
-				.perform(post("/employees/create").contentType(MediaType.APPLICATION_JSON).content(jackJson));
+				.perform(post(EMPLOYEE_URI).contentType(MediaType.APPLICATION_JSON).content(jackJson));
 		resultCreate.andExpect(content().string(is("\"" + jack.getId() + "\""))).andExpect(status().is2xxSuccessful());
 
 		// Prematurely delete jack from the repo
 		repo.delete(jack);
 
-		String idJson = mapper.writeValueAsString(jack.getId());
 		ResultActions resultDelete = mockMvc.perform(
-				delete("/employees/deleteEmployeeById").contentType(MediaType.APPLICATION_JSON).content(idJson));
+				delete(EMPLOYEE_URI + jack.getId()).contentType(MediaType.APPLICATION_JSON));
 		resultDelete.andExpect(status().isNotFound());
 	}
 
 	@Test
 	public void testfindByLastNameSuccess() throws Exception {
-		ResultActions resultCreate = mockMvc.perform(get("/employees/search/findByLastName?lastName=Doe"));
+		ResultActions resultCreate = mockMvc.perform(get(EMPLOYEE_URI + "search/findByLastName?lastName=Doe"));
 		resultCreate.andExpect(status().is2xxSuccessful()).andExpect(jsonPath("$._embedded.employees", hasSize(2)))
 				.andExpect(jsonPath("$._embedded.employees[0].firstName", is("John")))
 				.andExpect(jsonPath("$._embedded.employees[0].middleInitial", is("P")))
@@ -304,7 +300,7 @@ public class EmployeeCRUDAppApplicationTests {
 
 	@Test
 	public void testfindByLastNameFail() throws Exception {
-		ResultActions resultCreate = mockMvc.perform(get("/employees/search/findByLastName?lastName=Smithers"));
+		ResultActions resultCreate = mockMvc.perform(get(EMPLOYEE_URI + "search/findByLastName?lastName=Smithers"));
 		resultCreate.andExpect(status().is2xxSuccessful()).andExpect(jsonPath("$._embedded.employees", hasSize(0)));
 	}
 
